@@ -1,0 +1,22 @@
+{
+  "manifestVersion": 1,
+  "id": "notes-processor-plugin",
+  "name": "Notes Processor",
+  "author": "bharat2288",
+  "repoUrl": "https://github.com/bharat2288/notes-processor-plugin",
+  "version": {
+    "major": 1,
+    "minor": 0,
+    "patch": 0
+  },
+  "theme": [],
+  "enableOnMobile": false,
+  "description": "Classify and process notes from any Remnote page into organized folders",
+  "requestNative": false,
+  "requiredScopes": [
+    {
+      "type": "All",
+      "level": "ReadCreateModifyDelete"
+    }
+  ]
+}
