@@ -1,0 +1,37 @@
+{
+  "manifestVersion": 1,
+  "id": "inbox-sync-plugin",
+  "name": "Inbox Sync",
+  "description": "Sync classified inbox items from Google Sheets to Remnote folders",
+  "version": {
+    "major": 1,
+    "minor": 0,
+    "patch": 0
+  },
+  "author": "Local",
+  "enableOnMobile": false,
+  "requestNative": false,
+  "repoUrl": "https://github.com/bharat2288/inbox-sync-plugin",
+  "requiredScopes": [
+    {
+      "type": "All",
+      "level": "ReadCreateModifyDelete"
+    }
+  ],
+  "widgets": [
+    {
+      "id": "index",
+      "name": "Index",
+      "location": "Index"
+    },
+    {
+      "id": "inbox_sync",
+      "name": "Inbox Sync",
+      "location": "Popup",
+      "dimensions": {
+        "width": 350,
+        "height": 500
+      }
+    }
+  ]
+}
