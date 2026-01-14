@@ -68,35 +68,42 @@ export const InboxSyncWidget = () => {
 
       console.log('Import:', { classification, folderName, folderKey, categoryIds });
 
-      // Use target_folder (not classification) for lookup since keys are plural (tasks, ideas, etc.)
-      let parentRem = null;
+      // Get today's Daily Doc (where items will be created)
+      const dailyDoc = await plugin.date.getTodaysDoc();
+      if (!dailyDoc) {
+        throw new Error('No Daily Doc found for today');
+      }
+
+      // Find the category Rem to use as a tag
+      let tagRem = null;
       const storedId = categoryIds?.[folderKey] || categoryIds?.['inbox'];
 
       console.log('Looking up storedId for', folderKey, ':', storedId);
 
       if (storedId) {
-        parentRem = await plugin.rem.findOne(storedId);
-        console.log('Found by storedId:', parentRem?._id);
+        tagRem = await plugin.rem.findOne(storedId);
+        console.log('Found by storedId:', tagRem?._id);
       }
 
-      if (!parentRem) {
+      if (!tagRem) {
         console.log('Trying findByName:', folderName);
-        parentRem = await plugin.rem.findByName([folderName], null);
-        console.log('Found by name:', parentRem?._id);
+        tagRem = await plugin.rem.findByName([folderName], null);
+        console.log('Found by name:', tagRem?._id);
       }
 
-      if (!parentRem) {
+      if (!tagRem) {
         throw new Error(`Category not found: ${folderName}`);
       }
 
-      console.log('Creating Rem under parent:', parentRem._id);
+      console.log('Creating Rem in Daily Doc, tagging with:', tagRem._id);
 
-      // Create Rem as child of the target folder directly
+      // Create Rem in Daily Doc and tag with category
       const newRem = await plugin.rem.createRem();
       if (!newRem) throw new Error('Failed to create Rem');
 
       await newRem.setText([item.raw_input]);
-      await newRem.setParent(parentRem);
+      await newRem.setParent(dailyDoc);
+      await newRem.addTag(tagRem);
 
       if (classification === 'task' || classification === 'tasks') {
         await newRem.setIsTodo(true);
@@ -150,26 +157,26 @@ export const InboxSyncWidget = () => {
     }).join('');
   };
 
-  // Process Daily Notes: classify and tag children of today's Daily Doc
+  // Process Notes: classify and tag children of active parent rem
   const processDailyNotes = async () => {
     setProcessing(true);
     setProcessResults([]);
     setError(null);
 
     try {
-      // Get today's Daily Doc - this is the working logic
-      const dailyDoc = await plugin.date.getTodaysDoc();
-      if (!dailyDoc) {
-        throw new Error('No Daily Doc found for today');
+      // Get the active parent rem (the page/document we're viewing)
+      const activeParent = await plugin.focus.getFocusedPortal();
+      if (!activeParent) {
+        throw new Error('No active page found. Please focus on a document first.');
       }
 
-      const pageName = await getRemText(dailyDoc);
-      setActivePageName(pageName || 'Today\'s Daily Notes');
+      const pageName = await getRemText(activeParent);
+      setActivePageName(pageName || 'Active Page');
 
-      // Get top-level children of the Daily Doc
-      const children = await dailyDoc.getChildrenRem();
+      // Get top-level children of the active parent
+      const children = await activeParent.getChildrenRem();
       if (!children || children.length === 0) {
-        throw new Error('No items in today\'s Daily Doc');
+        throw new Error('No items in active page');
       }
 
       console.log(`Processing ${children.length} children from "${pageName}"`);

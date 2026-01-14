@@ -60,20 +60,20 @@ export const InboxSidebarWidget = () => {
 
   const processDailyNotes = async () => {
     setProcessing(true);
-    await plugin.app.toast('Processing Daily Notes...');
+    await plugin.app.toast('Processing Notes...');
 
     try {
-      // Get today's Daily Doc - this is the working logic
-      const dailyDoc = await plugin.date.getTodaysDoc();
-      if (!dailyDoc) {
-        await plugin.app.toast('No Daily Doc found for today');
+      // Get the active parent rem (the page/document we're viewing)
+      const activeParent = await plugin.focus.getFocusedPortal();
+      if (!activeParent) {
+        await plugin.app.toast('No active page found. Please focus on a document first.');
         setProcessing(false);
         return;
       }
 
-      const children = await dailyDoc.getChildrenRem();
+      const children = await activeParent.getChildrenRem();
       if (!children || children.length === 0) {
-        await plugin.app.toast('No items in today\'s Daily Doc');
+        await plugin.app.toast('No items in active page');
         setProcessing(false);
         return;
       }
@@ -151,7 +151,7 @@ export const InboxSidebarWidget = () => {
         <span className="text-base">📥</span>
         <span className="flex-1 text-sm font-medium rn-clr-content-primary">Inbox Sync</span>
         {serverOnline === false && (
-          <span className="px-1.5 py-0.5 rounded text-xs bg-red-100 text-red-600">offline</span>
+          <span className="px-1.5 py-0.5 rounded text-xs bg-red-500 text-white font-medium">offline</span>
         )}
         {serverOnline && count > 0 && (
           <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500 text-white">
@@ -161,7 +161,7 @@ export const InboxSidebarWidget = () => {
         {loading && <span className="text-xs rn-clr-content-secondary">...</span>}
       </button>
 
-      {/* Process Daily Notes button */}
+      {/* Process Notes button */}
       <button
         onClick={(e) => {
           e.preventDefault();
@@ -174,7 +174,7 @@ export const InboxSidebarWidget = () => {
       >
         <span className="text-base">📋</span>
         <span className="flex-1 text-sm font-medium rn-clr-content-primary">
-          {processing ? 'Processing...' : 'Process Daily Notes'}
+          {processing ? 'Processing...' : 'Process Notes'}
         </span>
       </button>
     </div>

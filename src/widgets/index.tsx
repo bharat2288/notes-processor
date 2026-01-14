@@ -5,22 +5,22 @@ import '../style.css';
 const CATEGORIES = ['Tasks', 'Ideas', 'People', 'Admin', 'Inbox'];
 const SERVER_URL = 'http://localhost:5050';
 
-// Shared function to process daily notes
+// Shared function to process notes in active parent rem
 async function processDailyNotes(plugin: ReactRNPlugin) {
-  await plugin.app.toast('Processing Daily Notes...');
+  await plugin.app.toast('Processing Notes...');
 
   try {
-    // Get today's Daily Doc
-    const dailyDoc = await plugin.date.getTodaysDoc();
-    if (!dailyDoc) {
-      await plugin.app.toast('No Daily Doc found for today');
+    // Get the active parent rem (the page/document we're viewing)
+    const activeParent = await plugin.focus.getFocusedPortal();
+    if (!activeParent) {
+      await plugin.app.toast('No active page found. Please focus on a document first.');
       return;
     }
 
-    // Get children of Daily Doc
-    const children = await dailyDoc.getChildrenRem();
+    // Get children of active parent
+    const children = await activeParent.getChildrenRem();
     if (!children || children.length === 0) {
-      await plugin.app.toast('No items in today\'s Daily Doc');
+      await plugin.app.toast('No items in active page');
       return;
     }
 
@@ -131,23 +131,23 @@ async function onActivate(plugin: ReactRNPlugin) {
     widgetTabTitle: 'Notes Processor',
   });
 
-  // Register command to open popup
+  // Register command to open Inbox Sync popup
   await plugin.app.registerCommand({
-    id: 'open-notes-processor',
-    name: 'Notes Processor',
-    description: 'Open the Notes Processor panel',
-    quickCode: 'notes',
+    id: 'open-inbox-sync',
+    name: 'Inbox Sync',
+    description: 'Import items from Google Sheets to Daily Doc',
+    quickCode: 'inbox',
     action: async () => {
       await plugin.widget.openPopup('inbox_sync');
     },
   });
 
-  // Register command to process Daily Notes
+  // Register command to process notes
   await plugin.app.registerCommand({
-    id: 'process-daily-notes',
-    name: 'Process Daily Notes',
-    description: 'Classify and tag items from today\'s Daily Doc',
-    quickCode: 'pdn',
+    id: 'process-notes',
+    name: 'Process Notes',
+    description: 'Classify and tag items in today\'s Daily Doc',
+    quickCode: 'pn',
     action: async () => {
       await processDailyNotes(plugin);
     },
