@@ -5,22 +5,22 @@ import '../style.css';
 const CATEGORIES = ['Tasks', 'Ideas', 'People', 'Admin', 'Inbox'];
 const SERVER_URL = 'http://localhost:5050';
 
-// Shared function to process notes in active parent rem
+// Shared function to process notes in today's Daily Doc
 async function processDailyNotes(plugin: ReactRNPlugin) {
-  await plugin.app.toast('Processing Notes...');
+  await plugin.app.toast('Processing Daily Notes...');
 
   try {
-    // Get the active parent rem (the page/document we're viewing)
-    const activeParent = await plugin.focus.getFocusedPortal();
-    if (!activeParent) {
-      await plugin.app.toast('No active page found. Please focus on a document first.');
+    // Get today's Daily Doc - this is the working logic
+    const dailyDoc = await plugin.date.getTodaysDoc();
+    if (!dailyDoc) {
+      await plugin.app.toast('No Daily Doc found for today');
       return;
     }
 
-    // Get children of active parent
-    const children = await activeParent.getChildrenRem();
+    // Get children of Daily Doc
+    const children = await dailyDoc.getChildrenRem();
     if (!children || children.length === 0) {
-      await plugin.app.toast('No items in active page');
+      await plugin.app.toast('No items in today\'s Daily Doc');
       return;
     }
 
@@ -68,19 +68,32 @@ async function processDailyNotes(plugin: ReactRNPlugin) {
         }
 
         const result = await response.json();
-        const folderKey = result.target_folder.toLowerCase();
-        const targetId = categoryIds[folderKey];
 
-        if (targetId) {
-          const targetRem = await plugin.rem.findOne(targetId);
-          if (targetRem) {
-            // Add tag (item stays in place)
-            await child.addTag(targetRem);
-            if (result.classification === 'task') {
-              await child.setIsTodo(true);
+        // Handle new multi-category response format
+        const folders = result.folders || [result.target_folder];
+
+        // Add all applicable tags
+        let taggedAny = false;
+        for (const folder of folders) {
+          const folderKey = folder.toLowerCase();
+          const targetId = categoryIds[folderKey];
+
+          if (targetId) {
+            const targetRem = await plugin.rem.findOne(targetId);
+            if (targetRem) {
+              await child.addTag(targetRem);
+              taggedAny = true;
             }
-            processed++;
           }
+        }
+
+        // Set as todo if task is in categories
+        if (result.is_task) {
+          await child.setIsTodo(true);
+        }
+
+        if (taggedAny) {
+          processed++;
         }
       } catch (err) {
         console.error('Error classifying item:', err);

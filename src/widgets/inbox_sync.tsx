@@ -157,26 +157,26 @@ export const InboxSyncWidget = () => {
     }).join('');
   };
 
-  // Process Notes: classify and tag children of active parent rem
+  // Process Notes: classify and tag children of today's Daily Doc
   const processDailyNotes = async () => {
     setProcessing(true);
     setProcessResults([]);
     setError(null);
 
     try {
-      // Get the active parent rem (the page/document we're viewing)
-      const activeParent = await plugin.focus.getFocusedPortal();
-      if (!activeParent) {
-        throw new Error('No active page found. Please focus on a document first.');
+      // Get today's Daily Doc - this is the working logic
+      const dailyDoc = await plugin.date.getTodaysDoc();
+      if (!dailyDoc) {
+        throw new Error('No Daily Doc found for today');
       }
 
-      const pageName = await getRemText(activeParent);
-      setActivePageName(pageName || 'Active Page');
+      const pageName = await getRemText(dailyDoc);
+      setActivePageName(pageName || 'Today\'s Daily Doc');
 
-      // Get top-level children of the active parent
-      const children = await activeParent.getChildrenRem();
+      // Get top-level children of the Daily Doc
+      const children = await dailyDoc.getChildrenRem();
       if (!children || children.length === 0) {
-        throw new Error('No items in active page');
+        throw new Error('No items in today\'s Daily Doc');
       }
 
       console.log(`Processing ${children.length} children from "${pageName}"`);
@@ -236,32 +236,33 @@ export const InboxSyncWidget = () => {
           }
 
           const result = await response.json();
-          const { classification, target_folder: targetFolder, confidence } = result;
+          const { categories, folders, confidence, is_task } = result;
 
-          // Find the target folder Rem
-          const folderKey = targetFolder.toLowerCase();
-          let parentRem = null;
-          const storedId = categoryIds?.[folderKey] || categoryIds?.['inbox'];
+          // Add all applicable tags
+          for (const folder of folders || []) {
+            const folderKey = folder.toLowerCase();
+            const storedId = categoryIds?.[folderKey];
 
-          if (storedId) {
-            parentRem = await plugin.rem.findOne(storedId);
-          }
-          if (!parentRem) {
-            parentRem = await plugin.rem.findByName([targetFolder], null);
-          }
+            let tagRem = null;
+            if (storedId) {
+              tagRem = await plugin.rem.findOne(storedId);
+            }
+            if (!tagRem) {
+              tagRem = await plugin.rem.findByName([folder], null);
+            }
 
-          if (parentRem) {
-            // Add category tag (item stays in place, just gets tagged)
-            await child.addTag(parentRem);
-
-            // Set as todo if it's a task
-            if (classification === 'task') {
-              await child.setIsTodo(true);
+            if (tagRem) {
+              await child.addTag(tagRem);
             }
           }
 
+          // Set as todo if task is in categories
+          if (is_task) {
+            await child.setIsTodo(true);
+          }
+
           setProcessResults(prev => prev.map((r, idx) =>
-            idx === i ? { ...r, status: 'done', classification, targetFolder, confidence } : r
+            idx === i ? { ...r, status: 'done', classification: categories.join(', '), targetFolder: folders.join(', '), confidence } : r
           ));
 
         } catch (err) {
